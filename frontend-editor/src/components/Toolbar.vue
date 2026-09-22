@@ -5,8 +5,23 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         <span class="toolbar__name">Mira</span>
       </div>
-      <span v-if="store.isDirty" class="toolbar__dot" />
+      <span v-if="store.isDirty" class="toolbar__dot" title="有未保存的更改" />
     </div>
+
+    <nav class="toolbar__file">
+      <button class="tbtn" title="新建文档 (Ctrl+N)" @click="emit('new-doc')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span>新建</span>
+      </button>
+      <button class="tbtn" title="打开文件（可多选）" @click="emit('open-files')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>打开</span>
+      </button>
+      <button class="tbtn tbtn--accent" :disabled="!store.hasDocuments" title="保存 (Ctrl+S)" @click="emit('save')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span>保存</span>
+      </button>
+    </nav>
 
     <nav class="toolbar__actions">
       <div class="toolbar__group" v-for="(group, gi) in actionGroups" :key="gi">
@@ -15,6 +30,7 @@
           :key="act.id"
           class="toolbar__btn"
           :title="act.title"
+          :disabled="!store.hasDocuments"
           @click="emit('action', act.id)"
           v-html="act.icon"
         />
@@ -22,16 +38,16 @@
     </nav>
 
     <div class="toolbar__right">
-      <span class="toolbar__file">{{ store.fileName }}</span>
+      <span class="toolbar__filename">{{ store.fileName || '—' }}</span>
     </div>
   </header>
 </template>
 
 <script setup>
-import { useEditorStore } from '@/stores/editor'
+import { useDocumentsStore } from '@/stores/documents'
 
-const store = useEditorStore()
-const emit = defineEmits(['action'])
+const store = useDocumentsStore()
+const emit = defineEmits(['action', 'new-doc', 'open-files', 'save'])
 
 const I = (d, size = 16) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`
@@ -61,6 +77,7 @@ const actionGroups = [
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: $sp-3;
   height: 44px;
   padding: 0 $sp-4;
   background: $bg-elevated;
@@ -73,7 +90,7 @@ const actionGroups = [
     display: flex;
     align-items: center;
     gap: $sp-2;
-    min-width: 140px;
+    min-width: 120px;
   }
 
   &__brand {
@@ -97,10 +114,20 @@ const actionGroups = [
     flex-shrink: 0;
   }
 
+  &__file {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
   &__actions {
     display: flex;
     align-items: center;
     gap: $sp-1;
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
   }
 
   &__group {
@@ -128,26 +155,56 @@ const actionGroups = [
     color: $text-2;
     transition: all $t-fast $ease;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: $accent-soft;
       color: $accent;
     }
-    &:active {
+    &:active:not(:disabled) {
       transform: scale(0.93);
     }
+    &:disabled { opacity: 0.35; cursor: default; }
   }
 
   &__right {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    min-width: 140px;
+    min-width: 120px;
+    max-width: 200px;
   }
 
-  &__file {
+  &__filename {
     font-size: $fs-xs;
     color: $text-3;
     font-family: $font-mono;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+}
+
+.tbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 $sp-2;
+  border: none;
+  background: transparent;
+  border-radius: $r-md;
+  font-size: $fs-xs;
+  font-family: $font-ui;
+  font-weight: 500;
+  color: $text-2;
+  cursor: pointer;
+  transition: all $t-fast $ease;
+
+  svg { flex-shrink: 0; }
+
+  &:hover:not(:disabled) { background: $accent-soft; color: $accent; }
+  &:active:not(:disabled) { transform: scale(0.94); }
+  &:disabled { opacity: 0.4; cursor: default; }
+
+  &--accent { color: $accent; }
 }
 </style>

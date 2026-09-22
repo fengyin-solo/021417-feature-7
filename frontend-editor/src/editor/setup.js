@@ -6,62 +6,17 @@ import { languages } from '@codemirror/language-data'
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language'
 import { editorBaseTheme } from './theme'
 import { markdownDecorationPlugin } from './decoration-plugin'
-
-const defaultContent = `# Welcome to MD Live Editor
-
-This is a **live rendering** markdown editor. Try clicking on any formatted text to see the raw syntax.
-
-## Features
-
-- **Bold text** and *italic text* render inline
-- ~~Strikethrough~~ is supported too
-- \`inline code\` looks great
-- Links like [Google](https://www.google.com) are clickable
-
-### Code Blocks
-
-\`\`\`javascript
-function greet(name) {
-  console.log(\`Hello, \${name}!\`)
-}
-greet('World')
-\`\`\`
-
-### Blockquotes
-
-> This is a blockquote. It has a nice left border and subtle background.
-> You can write multiple lines here.
-
-### Task Lists
-
-- [x] Build the markdown parser
-- [x] Implement decoration plugin
-- [ ] Add more syntax support
-- [ ] Polish the UI
-
-### Images
-
-![Placeholder](https://via.placeholder.com/600x200/e8f0fe/1a73e8?text=MD+Live+Editor)
-
----
-
-### Table-like content
-
-The editor focuses on **inline rendering** — what you see is what you get, but you can always click to edit the raw markdown.
-
-Happy writing! ✨
-`
+import { DEFAULT_DOC } from './default-doc'
 
 /**
- * Create and mount a CodeMirror 6 editor instance.
- * @param {HTMLElement} parent - The DOM element to mount the editor into
+ * Build the shared list of extensions used by every document state.
  * @param {Object} [options]
- * @param {string} [options.doc] - Initial document content
- * @param {function} [options.onUpdate] - Callback for editor updates
- * @returns {EditorView}
+ * @param {function} [options.onUpdate] - per-state update listener (bound to one document)
+ * @param {Array} [options.extra] - additional extensions (e.g. keymaps)
+ * @returns {Array}
  */
-export function createEditor(parent, options = {}) {
-  const { doc, onUpdate } = options
+export function buildExtensions(options = {}) {
+  const { onUpdate, extra = [] } = options
 
   const extensions = [
     // Core
@@ -93,18 +48,48 @@ export function createEditor(parent, options = {}) {
     markdownDecorationPlugin,
 
     // Placeholder
-    EditorView.contentAttributes.of({ spellcheck: 'true' })
+    EditorView.contentAttributes.of({ spellcheck: 'true' }),
+
+    ...extra
   ]
 
-  // Add update listener if provided
   if (onUpdate) {
     extensions.push(EditorView.updateListener.of(onUpdate))
   }
 
-  const state = EditorState.create({
-    doc: doc || defaultContent,
-    extensions
-  })
+  return extensions
+}
 
+/**
+ * Create an independent EditorState for a single document.
+ * Each state owns its own undo history, selection and update listener,
+ * so switching between documents never mixes their contents.
+ * @param {Object} [options]
+ * @param {string} [options.doc=''] - Initial document content
+ * @param {function} [options.onUpdate] - Callback for editor updates
+ * @param {Array} [options.extra] - Additional extensions
+ * @returns {EditorState}
+ */
+export function createEditorState(options = {}) {
+  const { doc = '', onUpdate, extra } = options
+  return EditorState.create({
+    doc,
+    extensions: buildExtensions({ onUpdate, extra })
+  })
+}
+
+/**
+ * Create and mount a CodeMirror 6 editor view with an initial document state.
+ * @param {HTMLElement} parent - The DOM element to mount the editor into
+ * @param {Object} [options]
+ * @param {string} [options.doc] - Initial document content
+ * @param {function} [options.onUpdate] - Callback for editor updates
+ * @returns {EditorView}
+ */
+export function createEditor(parent, options = {}) {
+  const { doc = DEFAULT_DOC, onUpdate } = options
+  const state = createEditorState({ doc, onUpdate })
   return new EditorView({ state, parent })
 }
+
+export { DEFAULT_DOC }
