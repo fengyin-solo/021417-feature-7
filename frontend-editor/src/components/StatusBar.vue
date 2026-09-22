@@ -2,6 +2,12 @@
   <footer class="status">
     <span class="status__item">{{ store.statusText }}</span>
     <span class="status__sep">·</span>
+    <span class="status__item">{{ store.docCount }} 份文稿</span>
+    <span class="status__sep">·</span>
+    <span class="status__item" :class="{ 'status__item--warn': store.hasDirtyDocuments }">
+      {{ store.hasDirtyDocuments ? '有未保存修改' : '全部已保存' }}
+    </span>
+    <span class="status__sep">·</span>
     <span class="status__item">Markdown</span>
     <span class="status__sep">·</span>
     <span class="status__item">UTF-8</span>
@@ -28,6 +34,8 @@ const store = useEditorStore()
     font-size: $fs-xs;
     color: $text-3;
     font-family: $font-mono;
+
+    &--warn { color: $warning; }
   }
 
   &__sep {

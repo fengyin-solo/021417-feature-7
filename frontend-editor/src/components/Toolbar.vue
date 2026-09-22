@@ -5,36 +5,61 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         <span class="toolbar__name">Mira</span>
       </div>
-      <span v-if="store.isDirty" class="toolbar__dot" />
     </div>
 
-    <nav class="toolbar__actions">
-      <div class="toolbar__group" v-for="(group, gi) in actionGroups" :key="gi">
+    <nav class="toolbar__center">
+      <div class="toolbar__fileops">
+        <button class="toolbar__btn" title="新建文稿 (Ctrl+Alt+N)" @click="emit('file-action', 'new')" v-html="iconNew"></button>
+        <button class="toolbar__btn" title="打开文件（可多选）(Ctrl+O)" @click="emit('file-action', 'open')" v-html="iconOpen"></button>
         <button
-          v-for="act in group"
-          :key="act.id"
           class="toolbar__btn"
-          :title="act.title"
-          @click="emit('action', act.id)"
-          v-html="act.icon"
-        />
+          :class="{ 'toolbar__btn--accent': store.isDirty }"
+          :disabled="!canEdit"
+          title="保存 (Ctrl+S)"
+          @click="emit('file-action', 'save')"
+          v-html="iconSave"
+        ></button>
+      </div>
+
+      <div class="toolbar__actions">
+        <div class="toolbar__group" v-for="(group, gi) in actionGroups" :key="gi">
+          <button
+            v-for="act in group"
+            :key="act.id"
+            class="toolbar__btn"
+            :disabled="!canEdit"
+            :title="act.title"
+            @click="emit('action', act.id)"
+            v-html="act.icon"
+          />
+        </div>
       </div>
     </nav>
 
     <div class="toolbar__right">
-      <span class="toolbar__file">{{ store.fileName }}</span>
+      <span class="toolbar__file" :title="store.fileName">{{ store.fileName || '无文稿' }}</span>
+      <span v-if="store.isDirty" class="toolbar__dot" title="有未保存的修改" />
     </div>
   </header>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
-const emit = defineEmits(['action'])
+const emit = defineEmits(['action', 'file-action'])
+
+const canEdit = computed(() =>
+  store.activeDocument?.status === 'ready'
+)
 
 const I = (d, size = 16) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`
+
+const iconNew = I('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>')
+const iconOpen = I('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>')
+const iconSave = I('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>')
 
 const actionGroups = [
   [
@@ -73,7 +98,13 @@ const actionGroups = [
     display: flex;
     align-items: center;
     gap: $sp-2;
-    min-width: 140px;
+    min-width: 120px;
+  }
+
+  &__center {
+    display: flex;
+    align-items: center;
+    gap: $sp-4;
   }
 
   &__brand {
@@ -89,12 +120,12 @@ const actionGroups = [
     letter-spacing: -0.01em;
   }
 
-  &__dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: $accent;
-    flex-shrink: 0;
+  &__fileops {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding-right: $sp-3;
+    border-right: 1px solid $border-light;
   }
 
   &__actions {
@@ -128,12 +159,19 @@ const actionGroups = [
     color: $text-2;
     transition: all $t-fast $ease;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: $accent-soft;
       color: $accent;
     }
-    &:active {
+    &:active:not(:disabled) {
       transform: scale(0.93);
+    }
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    &--accent {
+      color: $accent;
     }
   }
 
@@ -141,13 +179,26 @@ const actionGroups = [
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    min-width: 140px;
+    gap: $sp-2;
+    min-width: 120px;
+    max-width: 240px;
   }
 
   &__file {
     font-size: $fs-xs;
     color: $text-3;
     font-family: $font-mono;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $accent;
+    flex-shrink: 0;
   }
 }
 </style>
